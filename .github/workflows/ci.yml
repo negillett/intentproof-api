@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-quality:
+    name: Tox (static + coverage)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout API repository
+      uses: actions/checkout@v4
+
+      - name: Checkout intentproof-spec
+      uses: actions/checkout@v4
+      with:
+        repository: IntentProof/intentproof-spec
+        path: intentproof-spec
+
+      - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: "pip"
+
+      - name: Install dependencies
+      run: python -m pip install -e ".[dev]"
+
+      - name: Run tox
+      env:
+        INTENTPROOF_SPEC_ROOT: ${{ github.workspace }}/intentproof-spec
+      run: python -m tox -q
