@@ -135,6 +135,50 @@ def test_idempotency_is_scoped_per_tenant(client):
     assert second_b.json()["duplicate"] is True
 
 
+def test_query_limit_and_order_are_tenant_scoped(client):
+    headers_a = {"X-API-Key": "test-key"}
+    headers_b = {"X-API-Key": "test-key-b"}
+
+    for i in range(3):
+        client.post(
+            "/v1/events",
+            json=sample_event(
+                event_id=f"evt-a-{i}",
+                correlation_id="corr-limit",
+                action=f"checkout.step_{i}",
+            ),
+            headers=headers_a,
+        )
+
+    for i in range(2):
+        client.post(
+            "/v1/events",
+            json=sample_event(
+                event_id=f"evt-b-{i}",
+                correlation_id="corr-limit",
+                action=f"tenant-b.step_{i}",
+            ),
+            headers=headers_b,
+        )
+
+    response_a = client.get("/v1/events/by-correlation/corr-limit?limit=2", headers=headers_a)
+    response_b = client.get("/v1/events/by-correlation/corr-limit?limit=10", headers=headers_b)
+
+    assert response_a.status_code == 200
+    assert response_b.status_code == 200
+    assert response_a.json()["tenant_id"] == "tenant-test"
+    assert response_b.json()["tenant_id"] == "tenant-b"
+
+    items_a = response_a.json()["items"]
+    items_b = response_b.json()["items"]
+    assert len(items_a) == 2
+    assert len(items_b) == 2
+    assert [item["event_type"] for item in items_a] == ["checkout.step_0", "checkout.step_1"]
+    assert [item["event_type"] for item in items_b] == ["tenant-b.step_0", "tenant-b.step_1"]
+    assert all(item["tenant_id"] == "tenant-test" for item in items_a)
+    assert all(item["tenant_id"] == "tenant-b" for item in items_b)
+
+
 def test_http_exception_handler_fallback_envelope():
     request = Request(
         scope={
