@@ -3,10 +3,12 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
 import sys
+from importlib import metadata
 from pathlib import Path
 
 
@@ -91,6 +93,32 @@ def patch_generated_model(output_path: Path) -> None:
     output_path.write_text(text, encoding="utf-8")
 
 
+def write_spec_fingerprint_json(spec_root: Path, out_dir: Path) -> None:
+    """SHA256 aggregate over normative schema files listed in spec.json (intentproof-spec manifest contract)."""
+    spec = json.loads((spec_root / "spec.json").read_text(encoding="utf-8"))
+    schema_paths = sorted(spec["schemas"].values())
+    files: dict[str, str] = {}
+    lines: list[str] = []
+    for rel in schema_paths:
+        raw = (spec_root / rel).read_text(encoding="utf-8")
+        digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+        files[rel] = digest
+        lines.append(f"{rel}:{digest}")
+    payload = {
+        "specVersion": spec["version"],
+        "algorithm": "sha256",
+        "generator": {
+            "name": "datamodel-code-generator",
+            "version": metadata.version("datamodel-code-generator"),
+        },
+        "files": files,
+        "aggregate": hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest(),
+    }
+    (out_dir / "spec_fingerprint.json").write_text(
+        json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
+
+
 def write_generated_init(generated_dir: Path) -> None:
     init_py = generated_dir / "__init__.py"
     init_py.write_text(
@@ -127,6 +155,7 @@ def main() -> None:
     tmp_schema.unlink(missing_ok=True)
     patch_generated_model(output_path)
     write_generated_init(generated_dir)
+    write_spec_fingerprint_json(spec_root, generated_dir)
 
     print(f"Generated {output_path.relative_to(root)} from {execution_event_schema_rel}")
 

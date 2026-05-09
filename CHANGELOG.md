@@ -6,7 +6,7 @@ All notable changes to this repository are documented here. Releases follow SemV
 
 ## Unreleased
 
-- None yet.
+- Declare `[tool.intentproof]` pyproject pins, emit `app/generated/spec_fingerprint.json` from codegen (same aggregate fingerprint contract as other IntentProof consumer repos), and enforce pins in `tox -e static` via `scripts/check-spec-pin.sh`.
 
 ## 0.1.0 — 2026-05-08
 
