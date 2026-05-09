@@ -6,6 +6,9 @@ Logs narrate; IntentProof gives you proof.
 
 Repository: [IntentProof/intentproof-api](https://github.com/IntentProof/intentproof-api).
 
+[![CI](https://github.com/IntentProof/intentproof-api/actions/workflows/ci.yml/badge.svg)](https://github.com/IntentProof/intentproof-api/actions/workflows/ci.yml)
+<a href="https://github.com/IntentProof/intentproof-api/raw/main/conformance-certificate.json" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/conformance_certificate-view-0366d6" alt="Conformance Certificate" /></a>
+
 ## Why this service exists
 
 IntentProof answers four questions:
