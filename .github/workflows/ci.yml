@@ -5,6 +5,10 @@ on:
   pull_request:
   push:
     branches: [main, master]
+    # Skip when only repo-root conformance JSON changes (artifact refresh commits).
+    paths-ignore:
+      - "conformance-certificate.json"
+      - "conformance-report.json"
 
 permissions:
   contents: read
