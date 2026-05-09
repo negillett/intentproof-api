@@ -97,3 +97,18 @@ def test_http_exception_handler_fallback_envelope():
     assert response.status_code == 400
     assert b'"code":"http_error"' in response.body
     assert b'"correlation_id":"corr-fallback"' in response.body
+
+
+def test_openapi_contract_includes_stage3_endpoints_and_core_schemas(client):
+    response = client.get("/openapi.json")
+    assert response.status_code == 200
+
+    openapi = response.json()
+    paths = openapi["paths"]
+    components = openapi["components"]["schemas"]
+
+    assert "/v1/events" in paths
+    assert "/v1/events/by-correlation/{correlation_id}" in paths
+    assert "IngestEventResponse" in components
+    assert "CorrelationQueryResponse" in components
+    assert "IntentProofExecutionEventV1" in components
