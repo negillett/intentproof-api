@@ -6,4 +6,4 @@ set -euo pipefail
 spec_root="$(cd "$1" && pwd)"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-exec bash "${spec_root}/scripts/check-sdk-spec-pins.sh" "${repo_root}" "${spec_root}"
+exec bash "${spec_root}/scripts/check-consumer-spec-pins.sh" "${repo_root}" "${spec_root}"

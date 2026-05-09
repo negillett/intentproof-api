@@ -40,8 +40,8 @@ include = ["app*"]
 
 # Must match intentproof-spec spec.json version + the spec checkout HEAD — enforced by scripts/check-spec-pin.sh
 [tool.intentproof]
-spec-version = "spec-v2.0.1"
-spec-commit = "89a731fb02144c817aaaef289fcb2b56d032b191"
+spec-version = "spec-v2.0.2"
+spec-commit = "5b4e5e35e5fe7e087f2feb10f20f2c1f96010f13"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
