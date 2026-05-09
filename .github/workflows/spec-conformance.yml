@@ -1,0 +1,67 @@
+name: Spec Conformance
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: spec-conformance-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  spec-conformance:
+    name: Spec conformance + API quality gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout API repository
+        uses: actions/checkout@v6
+
+      - name: Checkout intentproof-spec
+        uses: actions/checkout@v6
+        with:
+          repository: IntentProof/intentproof-spec
+          path: intentproof-spec
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Set up Node.js for spec oracle
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: intentproof-spec/.nvmrc
+          cache: npm
+          cache-dependency-path: intentproof-spec/package-lock.json
+
+      - name: Install API dependencies
+        run: python -m pip install -e ".[dev]"
+
+      - name: Run API quality gates
+        env:
+          INTENTPROOF_SPEC_ROOT: ${{ github.workspace }}/intentproof-spec
+        run: python -m tox -q
+
+      - name: Run canonical spec conformance
+        env:
+          INTENTPROOF_SPEC_ROOT: ${{ github.workspace }}/intentproof-spec
+          INTENTPROOF_REPLAY_VERIFY: "1"
+          INTENTPROOF_CONFORMANCE_JSON: "1"
+          INTENTPROOF_CERTIFICATE_SCHEMA_VERSION: "v2"
+          INTENTPROOF_SPEC_INTEGRITY_PUBLIC_KEY_PATH: ${{ github.workspace }}/intentproof-spec/keys/spec-integrity.public.pem
+        run: |
+          bash scripts/spec-conformance.sh
+          cp intentproof-spec/conformance-report.json conformance-report.json
+
+      - name: Upload conformance report artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: conformance-report-api
+          path: conformance-report.json
+          if-no-files-found: error
