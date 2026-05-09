@@ -196,7 +196,7 @@ def test_http_exception_handler_fallback_envelope():
     assert b'"correlation_id":"corr-fallback"' in response.body
 
 
-def test_openapi_contract_includes_stage3_endpoints_and_core_schemas(client):
+def test_openapi_contract_includes_core_endpoints_and_schemas(client):
     response = client.get("/openapi.json")
     assert response.status_code == 200
 

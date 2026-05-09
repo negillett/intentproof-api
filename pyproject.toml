@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "intentproof-api"
 version = "0.1.0"
-description = "IntentProof Stage 3 API scaffold"
+description = "IntentProof API ingestion and query service"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
