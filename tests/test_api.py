@@ -9,12 +9,16 @@ from fastapi.testclient import TestClient
 from starlette.requests import Request
 
 
-def sample_event():
+def sample_event(
+    event_id: str = "evt-1",
+    correlation_id: str = "corr-1",
+    action: str = "checkout.capture_payment",
+):
     return {
-        "id": "evt-1",
-        "correlationId": "corr-1",
+        "id": event_id,
+        "correlationId": correlation_id,
         "intent": "Capture customer payment after checkout authorization",
-        "action": "checkout.capture_payment",
+        "action": action,
         "status": "ok",
         "inputs": {"amount": 1000, "currency": "USD"},
         "output": {"captureId": "cap-1", "status": "succeeded"},
@@ -29,7 +33,10 @@ def sample_event():
 def test_env(monkeypatch, tmp_path):
     db_path = tmp_path / "intentproof_api_test.db"
     monkeypatch.setenv("INTENTPROOF_DATABASE_URL", f"sqlite+pysqlite:///{db_path}")
-    monkeypatch.setenv("INTENTPROOF_API_KEYS", '{"test-key":"tenant-test"}')
+    monkeypatch.setenv(
+        "INTENTPROOF_API_KEYS",
+        '{"test-key":"tenant-test","test-key-b":"tenant-b"}',
+    )
     reset_settings_cache()
     reset_engine_cache()
     yield
@@ -80,6 +87,52 @@ def test_query_by_correlation(client):
     response = client.get("/v1/events/by-correlation/corr-1", headers=headers)
     assert response.status_code == 200
     assert response.json()["tenant_id"] == "tenant-test"
+    assert len(response.json()["items"]) == 1
+
+
+def test_query_by_correlation_is_tenant_isolated(client):
+    headers_a = {"X-API-Key": "test-key"}
+    headers_b = {"X-API-Key": "test-key-b"}
+
+    # Same correlation_id across tenants must not leak across query boundaries.
+    client.post(
+        "/v1/events",
+        json=sample_event(event_id="evt-a-1", correlation_id="shared-corr"),
+        headers=headers_a,
+    )
+    client.post(
+        "/v1/events",
+        json=sample_event(event_id="evt-b-1", correlation_id="shared-corr"),
+        headers=headers_b,
+    )
+
+    response_a = client.get("/v1/events/by-correlation/shared-corr", headers=headers_a)
+    response_b = client.get("/v1/events/by-correlation/shared-corr", headers=headers_b)
+
+    assert response_a.status_code == 200
+    assert response_b.status_code == 200
+    assert response_a.json()["tenant_id"] == "tenant-test"
+    assert response_b.json()["tenant_id"] == "tenant-b"
+    assert [item["tenant_id"] for item in response_a.json()["items"]] == ["tenant-test"]
+    assert [item["tenant_id"] for item in response_b.json()["items"]] == ["tenant-b"]
+
+
+def test_idempotency_is_scoped_per_tenant(client):
+    headers_a = {"X-API-Key": "test-key"}
+    headers_b = {"X-API-Key": "test-key-b"}
+    event = sample_event(event_id="evt-shared", correlation_id="corr-shared")
+
+    first_a = client.post("/v1/events", json=event, headers=headers_a)
+    second_a = client.post("/v1/events", json=event, headers=headers_a)
+    first_b = client.post("/v1/events", json=event, headers=headers_b)
+    second_b = client.post("/v1/events", json=event, headers=headers_b)
+
+    assert first_a.status_code == 202
+    assert first_b.status_code == 202
+    assert first_a.json()["duplicate"] is False
+    assert second_a.json()["duplicate"] is True
+    assert first_b.json()["duplicate"] is False
+    assert second_b.json()["duplicate"] is True
 
 
 def test_http_exception_handler_fallback_envelope():
