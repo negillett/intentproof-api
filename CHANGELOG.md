@@ -8,6 +8,7 @@ All notable changes to this repository are documented here. Releases follow SemV
 
 - Declare `[tool.intentproof]` pyproject pins, emit `app/generated/spec_fingerprint.json` from codegen (same aggregate fingerprint contract as other IntentProof consumer repos), and enforce pins in `tox -e static` via `scripts/check-spec-pin.sh`.
 - Surface root-level `conformance-report.json` and `conformance-certificate.json` artifacts and expose a README certificate badge for operator review, aligning API trust signals with SDK repositories.
+- Publish refreshed root `conformance-report.json` and `conformance-certificate.json` from trusted `Conformance Attestation` runs using the cert-bot token flow, matching SDK repository artifact refresh behavior.
 
 ## 0.1.0 — 2026-05-08
 
