@@ -1,11 +1,16 @@
 import asyncio
+import json
+from unittest.mock import MagicMock, patch
 
 import pytest
 from app.config import reset_settings_cache
-from app.db import reset_engine_cache
-from app.main import app, http_exception_handler
+from app.db import database_url_is_sqlite, get_engine, reset_engine_cache
+from app.main import app, http_exception_handler, lifespan
+from app.models import ProofIngestOutbox
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
+from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 from starlette.requests import Request
 
 
@@ -22,8 +27,8 @@ def sample_event(
         "status": "ok",
         "inputs": {"amount": 1000, "currency": "USD"},
         "output": {"captureId": "cap-1", "status": "succeeded"},
-        "startedAt": "2026-05-08T12:00:00Z",
-        "completedAt": "2026-05-08T12:00:00Z",
+        "startedAt": "2026-05-09T12:00:00Z",
+        "completedAt": "2026-05-09T12:00:00Z",
         "durationMs": 0,
         "attributes": {"service": "checkout-api", "env": "test"},
     }
@@ -196,6 +201,27 @@ def test_http_exception_handler_fallback_envelope():
     assert b'"correlation_id":"corr-fallback"' in response.body
 
 
+def test_database_url_is_sqlite_detection():
+    assert database_url_is_sqlite("sqlite+pysqlite:///./x.db") is True
+    assert database_url_is_sqlite("postgresql+psycopg://u:p@localhost/db") is False
+
+
+def test_lifespan_skips_create_all_for_postgres(monkeypatch):
+    monkeypatch.setenv(
+        "INTENTPROOF_DATABASE_URL",
+        "postgresql+psycopg://postgres:postgres@127.0.0.1:65432/intentproof_api",
+    )
+    monkeypatch.setenv("INTENTPROOF_API_KEYS", '{"k":"tenant"}')
+    reset_settings_cache()
+    reset_engine_cache()
+
+    async def _run() -> None:
+        async with lifespan(app):
+            pass
+
+    asyncio.run(_run())
+
+
 def test_openapi_contract_includes_core_endpoints_and_schemas(client):
     response = client.get("/openapi.json")
     assert response.status_code == 200
@@ -209,3 +235,92 @@ def test_openapi_contract_includes_core_endpoints_and_schemas(client):
     assert "IngestEventResponse" in components
     assert "CorrelationQueryResponse" in components
     assert "IntentProofExecutionEventV1" in components
+
+
+@patch("boto3.client")
+def test_ingest_enqueues_sqs_when_queue_url_set(mock_boto, monkeypatch, tmp_path):
+    monkeypatch.setenv("INTENTPROOF_DATABASE_URL", f"sqlite+pysqlite:///{tmp_path / 'sqs.db'}")
+    monkeypatch.setenv(
+        "INTENTPROOF_API_KEYS",
+        '{"test-key":"tenant-test","test-key-b":"tenant-b"}',
+    )
+    monkeypatch.setenv(
+        "INTENTPROOF_SQS_QUEUE_URL",
+        "https://sqs.us-east-1.amazonaws.com/123/q",
+    )
+    reset_settings_cache()
+    reset_engine_cache()
+    mock_boto.return_value.send_message = MagicMock()
+
+    with TestClient(app) as client:
+        headers = {"X-API-Key": "test-key"}
+        r = client.post(
+            "/v1/events",
+            json=sample_event(event_id="evt-sqs"),
+            headers=headers,
+        )
+    assert r.status_code == 202
+    mock_boto.return_value.send_message.assert_called_once()
+    body = mock_boto.return_value.send_message.call_args.kwargs["MessageBody"]
+    parsed = json.loads(body)
+    assert parsed["schema_version"] == 1
+    assert parsed["type"] == "intentproof.proof.ingested"
+    assert "message_id" in parsed
+    assert parsed["execution_event_row_id"] >= 1
+
+
+@patch("boto3.client")
+def test_duplicate_ingest_does_not_enqueue_twice(mock_boto, monkeypatch, tmp_path):
+    monkeypatch.setenv("INTENTPROOF_DATABASE_URL", f"sqlite+pysqlite:///{tmp_path / 'dup.db'}")
+    monkeypatch.setenv(
+        "INTENTPROOF_API_KEYS",
+        '{"test-key":"tenant-test","test-key-b":"tenant-b"}',
+    )
+    monkeypatch.setenv(
+        "INTENTPROOF_SQS_QUEUE_URL",
+        "https://sqs.us-east-1.amazonaws.com/123/q",
+    )
+    reset_settings_cache()
+    reset_engine_cache()
+    mock_boto.return_value.send_message = MagicMock()
+
+    with TestClient(app) as client:
+        headers = {"X-API-Key": "test-key"}
+        client.post("/v1/events", json=sample_event(event_id="evt-dup"), headers=headers)
+        client.post("/v1/events", json=sample_event(event_id="evt-dup"), headers=headers)
+
+    assert mock_boto.return_value.send_message.call_count == 1
+
+
+@patch("boto3.client")
+def test_ingest_still_accepted_when_sqs_send_fails(mock_boto, monkeypatch, tmp_path):
+    monkeypatch.setenv("INTENTPROOF_DATABASE_URL", f"sqlite+pysqlite:///{tmp_path / 'fail.db'}")
+    monkeypatch.setenv(
+        "INTENTPROOF_API_KEYS",
+        '{"test-key":"tenant-test","test-key-b":"tenant-b"}',
+    )
+    monkeypatch.setenv(
+        "INTENTPROOF_SQS_QUEUE_URL",
+        "https://sqs.us-east-1.amazonaws.com/123/q",
+    )
+    reset_settings_cache()
+    reset_engine_cache()
+    mock_boto.return_value.send_message.side_effect = RuntimeError("sqs unavailable")
+
+    with TestClient(app) as client:
+        headers = {"X-API-Key": "test-key"}
+        r = client.post(
+            "/v1/events",
+            json=sample_event(event_id="evt-fail-sqs"),
+            headers=headers,
+        )
+    assert r.status_code == 202
+
+    db = sessionmaker(bind=get_engine(), autoflush=False, autocommit=False)()
+    try:
+        rows = db.scalars(select(ProofIngestOutbox)).all()
+        assert len(rows) == 1
+        assert rows[0].published_at is None
+        assert rows[0].publish_attempts >= 1
+    finally:
+        db.close()

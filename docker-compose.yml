@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: intentproof_api
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 5s
+      retries: 12
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      INTENTPROOF_DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/intentproof_api
+      INTENTPROOF_API_KEYS: '{"compose-local-key":"tenant-compose"}'
+    depends_on:
+      db:
+        condition: service_healthy

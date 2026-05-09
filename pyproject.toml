@@ -9,6 +9,8 @@ description = "IntentProof API ingestion and query service"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+  "alembic>=1.13.0",
+  "boto3>=1.34.0",
   "fastapi>=0.115.0",
   "uvicorn[standard]>=0.30.0",
   "pydantic>=2.8.0",
@@ -67,7 +69,7 @@ exclude_lines = [
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["app", "tests"]
+src = ["alembic", "app", "tests"]
 extend-exclude = ["app/generated"]
 
 [tool.ruff.format]

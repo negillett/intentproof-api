@@ -1,0 +1,14 @@
+.git
+.github
+.tox
+.pytest_cache
+.ruff_cache
+.venv
+*.egg-info
+.coverage
+coverage.xml
+htmlcov
+.tmp-conformance-artifacts
+__pycache__
+*.pyc
+.pytest_cache

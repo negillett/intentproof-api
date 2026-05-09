@@ -1,7 +1,13 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine.url import make_url
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from app.config import get_settings
+
+
+def database_url_is_sqlite(database_url: str) -> bool:
+    """SQLite is used in tests; Postgres uses Alembic migrations (see `alembic/`)."""
+    return make_url(database_url).get_backend_name() == "sqlite"
 
 
 class Base(DeclarativeBase):
@@ -16,6 +22,14 @@ def _engine_for_url(database_url: str):
     if engine is None:
         engine = create_engine(database_url, future=True, pool_pre_ping=True)
         _ENGINES_BY_URL[database_url] = engine
+        if database_url_is_sqlite(database_url):
+
+            @event.listens_for(engine, "connect")
+            def _sqlite_foreign_keys(dbapi_connection, _connection_record):
+                cursor = dbapi_connection.cursor()
+                cursor.execute("PRAGMA foreign_keys=ON")
+                cursor.close()
+
     return engine
 
 

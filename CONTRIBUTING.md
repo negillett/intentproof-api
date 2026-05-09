@@ -8,6 +8,7 @@ Typical local checks:
 
 ```bash
 pip install "tox>=4"
+export INTENTPROOF_SPEC_ROOT=/path/to/intentproof-spec   # required for `tox -e static` (spec pin + codegen drift)
 tox run -e static
 tox run -e cov
 ```

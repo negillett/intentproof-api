@@ -9,8 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import get_tenant_id_from_api_key
-from app.db import Base, get_db, get_engine
-from app.models import ExecutionEventRecord
+from app.config import get_settings
+from app.db import Base, database_url_is_sqlite, get_db, get_engine
+from app.models import ExecutionEventRecord, ProofIngestOutbox
 from app.schemas import (
     CorrelationQueryResponse,
     ErrorEnvelope,
@@ -18,11 +19,20 @@ from app.schemas import (
     IngestEventResponse,
     StoredEventOut,
 )
+from app.verification_queue import (
+    build_proof_ingested_envelope,
+    envelope_to_json_bytes,
+    publish_outbox_row,
+    should_enqueue_to_outbox,
+)
 
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    Base.metadata.create_all(bind=get_engine())
+    # SQLite (tests): auto-create.
+    # Postgres: apply schema with `alembic upgrade head` (Docker entrypoint or deploy).
+    if database_url_is_sqlite(get_settings().database_url):
+        Base.metadata.create_all(bind=get_engine())
     yield
 
 
@@ -86,7 +96,32 @@ def ingest_event(
         raw_event=event.model_dump(mode="json", by_alias=True),
     )
     db.add(record)
+    db.flush()
+
+    outbox_id: int | None = None
+    if should_enqueue_to_outbox():
+        envelope = build_proof_ingested_envelope(
+            tenant_id=tenant_id,
+            record_id=record.id,
+            event_hash=event_hash,
+            correlation_id=event.correlation_id,
+            action=event.action,
+        )
+        outbox = ProofIngestOutbox(
+            execution_event_id=record.id,
+            tenant_id=tenant_id,
+            payload_json=envelope_to_json_bytes(envelope),
+            publish_attempts=0,
+        )
+        db.add(outbox)
+        db.flush()
+        outbox_id = outbox.id
+
     db.commit()
+    db.refresh(record)
+
+    if outbox_id is not None:
+        publish_outbox_row(db, outbox_id)
 
     return IngestEventResponse(
         accepted=True,

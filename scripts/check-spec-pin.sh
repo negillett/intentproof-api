@@ -3,7 +3,13 @@
 # Usage: check-spec-pin.sh /absolute/or/relative/path/to/intentproof-spec
 set -euo pipefail
 
-spec_root="$(cd "$1" && pwd)"
+spec_root_arg="${1:-}"
+if [ -z "${spec_root_arg}" ]; then
+  echo "check-spec-pin.sh: missing intentproof-spec checkout path (pass as \$1 or set INTENTPROOF_SPEC_ROOT for tox)." >&2
+  exit 1
+fi
+
+spec_root="$(cd "${spec_root_arg}" && pwd)"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 exec bash "${spec_root}/scripts/check-consumer-spec-pins.sh" "${repo_root}" "${spec_root}"

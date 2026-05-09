@@ -36,8 +36,10 @@ Planned next:
 - production auth mode (JWT or equivalent)
 - cursor-based pagination for correlation queries
 - OpenAPI hardening and endpoint versioning policy
-- migration workflow (`alembic`) and production DB operations
-- Integration suite against real Postgres
+- optional deploy-pipeline check that pinned **`intentproof-spec`** revision matches conformance artifacts (when CI/CD exists)
+- expanded integration suite against long-lived Postgres
+
+Shipped toward ops: **Alembic** migrations (Postgres), **Docker** image + **`docker-compose.yml`**, post-deploy **`scripts/smoke.sh`**, optional **SQS** transactional outbox (**`app/verification_queue.py`**) when **`INTENTPROOF_SQS_QUEUE_URL`** is set.
 
 ## Implementation status legend
 
@@ -57,7 +59,9 @@ Quick status map:
 | Spec-generated request model | Implemented now | `ExecutionEvent` request model generated from `intentproof-spec` |
 | JWT/production auth mode | Planned | API keys are MVP-only |
 | Cursor pagination | Planned | Current query uses `limit`, no cursor token yet |
-| Alembic migrations | Planned | SQLAlchemy model exists; migration workflow not added yet |
+| Alembic migrations | Implemented now | Initial revision under **`alembic/versions/`**; run **`alembic upgrade head`** or use the Docker entrypoint |
+| Docker / Compose | Implemented now | **`Dockerfile`**, **`docker-compose.yml`** (API + Postgres) |
+| Post-append **SQS** (optional) | Implemented now | **`INTENTPROOF_SQS_QUEUE_URL`** → transactional **`proof_ingest_outbox`** + **`intentproof.proof.ingested`** envelope (`schema_version` / `message_id`); **`scripts/publish_outbox.py`** retries unpublished rows |
 | Expanded API reference docs | Planned | Swagger/OpenAPI endpoints available, long-form reference pending |
 
 ## Requirements
@@ -67,22 +71,50 @@ Quick status map:
 
 ## Quickstart
 
+### Option A — Docker Compose (Postgres + API)
+
+1. Install Docker.
+2. Run:
+   - `docker compose up --build`
+3. Call the API with header **`X-API-Key: compose-local-key`** (see **`docker-compose.yml`**).
+4. Open docs: `http://127.0.0.1:8000/docs`
+
+Migrations run automatically via the container entrypoint (**`alembic upgrade head`**).
+
+### Option B — Local Python (SQLite tests use auto-`create_all`; Postgres needs Alembic)
+
 1. Create and activate a virtual environment.
 2. Install dependencies:
    - `pip install -e ".[dev]"`
 3. Copy environment file:
    - `cp .env.example .env`
-4. Start the API:
+4. **Postgres:** apply schema before first request:
+   - `alembic upgrade head`
+5. Start the API:
    - `uvicorn app.main:app --reload`
-5. Open docs:
+6. Open docs:
    - Swagger UI: `http://127.0.0.1:8000/docs`
    - OpenAPI JSON: `http://127.0.0.1:8000/openapi.json`
+
+### Post-deploy smoke
+
+With **`BASE_URL`** and an API key:
+
+```bash
+export BASE_URL="http://127.0.0.1:8000"
+export API_KEY="your-key"
+bash scripts/smoke.sh
+```
+
+Requires **`curl`** and **`jq`**.
 
 ## Configuration
 
 - `INTENTPROOF_DATABASE_URL`: SQLAlchemy URL (defaults to local Postgres)
-- `INTENTPROOF_API_KEYS`: JSON object mapping API key to tenant id
+- `INTENTPROOF_API_KEYS`: JSON object mapping API key to tenant id (production deployments should use **hashed keys stored in Postgres**, not environment JSON)
 - `INTENTPROOF_ENV`: environment name (`dev`, `staging`, `prod`, etc.)
+- `INTENTPROOF_SQS_QUEUE_URL` (optional): Amazon SQS queue URL — after a successful append (non-duplicate), enqueue **`intentproof.proof.ingested`** for verification workers
+- `INTENTPROOF_AWS_REGION` (optional): AWS region for the SQS client when it cannot be inferred from the environment
 
 Example API key map:
 
@@ -108,6 +140,7 @@ Status: **Implemented now**
   - validates request shape with Pydantic
   - computes deterministic event hash for idempotent retries
   - writes append-only event record
+  - optionally notifies **Amazon SQS** for downstream verification (when `INTENTPROOF_SQS_QUEUE_URL` is set; failures are logged and do not fail the request)
   - returns `202 Accepted`
 
 ### Query by correlation
@@ -158,8 +191,8 @@ curl -X POST "http://127.0.0.1:8000/v1/events" \
     "status": "ok",
     "inputs": {"amount": 1000, "currency": "USD"},
     "output": {"captureId": "cap-1", "status": "succeeded"},
-    "startedAt": "2026-05-08T12:00:00Z",
-    "completedAt": "2026-05-08T12:00:00Z",
+    "startedAt": "2026-05-09T12:00:00Z",
+    "completedAt": "2026-05-09T12:00:00Z",
     "durationMs": 0,
     "attributes": {"service": "checkout-api", "env": "dev"}
   }'
