@@ -2,7 +2,7 @@
 
 Logs narrate; IntentProof gives you proof.
 
-`intentproof-api` is the Stage 3 service for ingesting and querying execution evidence with strict tenant boundaries and deterministic behavior. It is built with Python, FastAPI, Pydantic, SQLAlchemy, and Postgres.
+`intentproof-api` is the service for ingesting and querying execution evidence with strict tenant boundaries and deterministic behavior. It is built with Python, FastAPI, Pydantic, SQLAlchemy, and Postgres.
 
 Repository: [IntentProof/intentproof-api](https://github.com/IntentProof/intentproof-api).
 
@@ -17,7 +17,7 @@ IntentProof answers four questions:
 
 This API is the first SaaS-layer step: accept valid `ExecutionEvent` payloads, store them append-only, and retrieve correlation-scoped event history for downstream verification and reconciliation.
 
-## Current status (Stage 3 scaffold)
+## Current status
 
 Implemented now:
 
@@ -34,7 +34,7 @@ Planned next:
 - cursor-based pagination for correlation queries
 - OpenAPI hardening and endpoint versioning policy
 - migration workflow (`alembic`) and production DB operations
-- Stage 3 gate integration suite against real Postgres
+- Integration suite against real Postgres
 
 ## Implementation status legend
 
@@ -219,7 +219,7 @@ Status: **Implemented now**
 
 ## Roadmap placeholders
 
-These sections are intentionally reserved for upcoming Stage 3/4 docs:
+These sections are intentionally reserved for upcoming docs:
 
 - API Reference (expanded endpoint contracts)
 - Auth and tenancy model (production mode)
