@@ -69,7 +69,7 @@ exclude_lines = [
 [tool.ruff]
 target-version = "py312"
 line-length = 100
-src = ["alembic", "app", "tests"]
+src = ["alembic", "app", "examples", "tests"]
 extend-exclude = ["app/generated"]
 
 [tool.ruff.format]

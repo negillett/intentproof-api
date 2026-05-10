@@ -175,35 +175,7 @@ Current codes include:
 
 ## Example requests
 
-Status: **Implemented now** (examples reflect current request/response models and routes)
-
-### Ingest event
-
-```bash
-curl -X POST "http://127.0.0.1:8000/v1/events" \
-  -H "Content-Type: application/json" \
-  -H "X-API-Key: dev-local-key" \
-  -d '{
-    "id": "evt-1",
-    "correlationId": "corr-123",
-    "intent": "Capture customer payment after checkout authorization",
-    "action": "checkout.capture_payment",
-    "status": "ok",
-    "inputs": {"amount": 1000, "currency": "USD"},
-    "output": {"captureId": "cap-1", "status": "succeeded"},
-    "startedAt": "2026-05-09T12:00:00Z",
-    "completedAt": "2026-05-09T12:00:00Z",
-    "durationMs": 0,
-    "attributes": {"service": "checkout-api", "env": "dev"}
-  }'
-```
-
-### Query correlation
-
-```bash
-curl "http://127.0.0.1:8000/v1/events/by-correlation/corr-123?limit=100" \
-  -H "X-API-Key: dev-local-key"
-```
+Runnable **`curl`** and Python scripts live under **`examples/`** (see **`examples/README.md`**). Set **`INTENTPROOF_API_BASE`** and **`INTENTPROOF_API_KEY`** to match your deployment. The SDK example uses the real **`intentproof`** package — **`pip install -e ../intentproof-sdk-python`** when that repo sits next to **`intentproof-api`** (typical **`~/src`** layout), or install **`intentproof-sdk`** from PyPI.
 
 ## Development workflow
 
@@ -242,6 +214,7 @@ Status: **Implemented now**
 - `app/models.py`: SQLAlchemy persistence models
 - `app/schemas.py`: request/response and envelope schemas
 - `app/db.py`: engine/session lifecycle
+- `examples/`: sample **`curl`** and Python callers (see **`examples/README.md`**); shared **`http_utils.py`** for URL validation in Python scripts
 - `tests/test_api.py`: API behavior and coverage gates
 - `tox.ini`: quality/test orchestration
 
