@@ -36,7 +36,7 @@ async def lifespan(_: FastAPI):
     yield
 
 
-app = FastAPI(title="IntentProof API", version="0.1.0", lifespan=lifespan)
+app = FastAPI(title="IntentProof API", version="0.2.0", lifespan=lifespan)
 
 
 @app.exception_handler(HTTPException)
