@@ -94,7 +94,10 @@ def patch_generated_model(output_path: Path) -> None:
 
 
 def write_spec_fingerprint_json(spec_root: Path, out_dir: Path) -> None:
-    """SHA256 aggregate over normative schema files listed in spec.json (intentproof-spec manifest contract)."""
+    """SHA256 per schema file and aggregate, from paths in spec.json.
+
+    Paths follow the intentproof-spec manifest contract.
+    """
     spec = json.loads((spec_root / "spec.json").read_text(encoding="utf-8"))
     schema_paths = sorted(spec["schemas"].values())
     files: dict[str, str] = {}
