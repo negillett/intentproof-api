@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   test-and-quality:
-    name: Tox (static + coverage)
+    name: Tox (static + audit + coverage)
     runs-on: ubuntu-latest
     timeout-minutes: 20
 
