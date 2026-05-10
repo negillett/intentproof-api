@@ -31,11 +31,17 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
       - name: Resolve pinned intentproof-spec revision
         id: spec_pin
         run: |
           set -euo pipefail
-          python3 - <<'PY'
+          python - <<'PY'
           import os
           import tomllib
           from pathlib import Path
@@ -51,12 +57,6 @@ jobs:
           ref: ${{ steps.spec_pin.outputs.sha }}
           fetch-depth: 0
           path: intentproof-spec
-
-      - name: Set up Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: pip
 
       - name: Set up Node.js for spec oracle
         uses: actions/setup-node@v6
