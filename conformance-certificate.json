@@ -1,0 +1,25 @@
+{
+  "certificateVersion": "cert-v0.1.0",
+  "issuer": "intentproof-ci",
+  "issuedAt": "2026-05-10T02:43:41.185Z",
+  "subject": {
+    "name": "intentproof-api",
+    "language": "python",
+    "version": "0.2.0"
+  },
+  "spec": {
+    "specVersion": "spec-v2.0.2",
+    "specFingerprint": "efaf4db5b5545d9f037d4ce7d2208a7aed7062e9ac417b3fa79ec2adc8bef165",
+    "specCommit": "5b4e5e35e5fe7e087f2feb10f20f2c1f96010f13"
+  },
+  "conformanceReportDigest": "fac633b176619df0751c4776cbf6b078465053c3494519814ab071f02cc9f442",
+  "claims": {
+    "oracle": "intentproof-spec/run-conformance",
+    "allPhasesPass": true
+  },
+  "signature": {
+    "alg": "ed25519",
+    "keyId": "intentproof-ci-ed25519-v1",
+    "value": "+R9Ja75dLbirFB0xft648b8zGbvshpDy/VDAJa52L7veq73Sr20lHD1c0dlQcAAIAnySDoTddDNYmHW2rSUyAw=="
+  }
+}
