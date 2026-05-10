@@ -1,24 +1,48 @@
-# IntentProof API
-
-Logs narrate; IntentProof gives you proof.
-
-`intentproof-api` is the service for ingesting and querying execution evidence with strict tenant boundaries and deterministic behavior. It is built with Python, FastAPI, Pydantic, SQLAlchemy, and Postgres.
-
-Repository: [IntentProof/intentproof-api](https://github.com/IntentProof/intentproof-api).
+## **Logs narrate; IntentProof gives you proof.**
 
 [![CI](https://github.com/IntentProof/intentproof-api/actions/workflows/ci.yml/badge.svg)](https://github.com/IntentProof/intentproof-api/actions/workflows/ci.yml)
 <a href="https://github.com/IntentProof/intentproof-api/raw/main/conformance-certificate.json" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/conformance_certificate-view-0366d6" alt="Conformance Certificate" /></a>
 
-## Why this service exists
+**IntentProof** is **auditable execution records** for actions that must be defensible—**intent** tied to what actually ran.
 
-IntentProof answers four questions:
+**This service** ingests **`ExecutionEvent`** payloads over HTTPS, keeps them in an **append-only** store, and serves **tenant-scoped** correlation queries—so proof can be **reconciled** with reality downstream, not only observed.
+
+Observability captures what happened. **IntentProof** tells you whether it matched what was **meant to happen**.
+
+Every **`ExecutionEvent`** contains:
+
+- **`intent`**: what this invocation was meant to prove
+- **`action`**: the stable operation id for this step
+- **`status`**: success or error
+- **`inputs`** and **`output`**: what the runtime saw going in and coming out
+
+## Why this matters
+
+Modern systems—especially AI agents—do not only compute; they act:
+issuing refunds, sending emails, updating databases.
+
+When something goes wrong, logs tell you what ran.
+They don't tell you:
 
 - what was supposed to happen
-- what actually happened
-- did those match
-- can that be proven
+- whether all steps completed
+- whether systems ended up in a consistent state
 
-This API is the first SaaS-layer step: accept valid `ExecutionEvent` payloads, store them append-only, and retrieve correlation-scoped event history for downstream verification and reconciliation.
+**IntentProof** exists to bridge that gap.
+
+It records intent alongside execution so systems can be verified, not just observed.
+
+### Picture this:
+
+It's 4:47 on a Friday. A customer insists the critical action never happened. Support sees scattered traces; engineering sees green checks; finance asks for **one** clean chain: what was **supposed** to occur, what **did** occur, and whether the outcome is **complete**.
+
+Ordinary telemetry shows that *something ran*. It rarely ships an **auditable story** you can hand to someone who doesn't read your codebase. **IntentProof** exists for when the question stops being "what was logged?" and starts being **"prove it."**
+
+## What this repository is
+
+**Repository:** [IntentProof/intentproof-api](https://github.com/IntentProof/intentproof-api).
+
+**`intentproof-api`** is the hosted ingestion plane for **`ExecutionEvent`** evidence: strict tenant boundaries, deterministic behavior, and quality gates you can trust in CI. It is built with **Python**, **FastAPI**, **Pydantic**, **SQLAlchemy**, and **Postgres**.
 
 ## Current status
 
@@ -66,10 +90,10 @@ Quick status map:
 
 ## Requirements
 
-- Python 3.12+
-- Postgres 15+ (recommended for local/prod parity)
+- **Python** 3.12 or newer
+- **Postgres** 15+ (recommended for local and production parity)
 
-## Quickstart
+## Quick start
 
 ### Option A — Docker Compose (Postgres + API)
 
