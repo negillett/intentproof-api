@@ -21,17 +21,45 @@ jobs:
       - name: Checkout API repository
         uses: actions/checkout@v6
 
-      - name: Checkout intentproof-spec
-        uses: actions/checkout@v6
-        with:
-          repository: IntentProof/intentproof-spec
-          path: intentproof-spec
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
           python-version: "3.12"
           cache: "pip"
+
+      - name: Resolve pinned intentproof-spec revision
+        id: spec_pin
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          import re
+          import sys
+          import tomllib
+          from pathlib import Path
+
+          raw = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["tool"]["intentproof"]["spec-commit"]
+          c = str(raw).strip()
+          if not re.fullmatch(r"[0-9a-f]{40}", c, flags=re.IGNORECASE):
+              print(
+                  "::error::[tool.intentproof].spec-commit must be a full 40-character hex commit SHA "
+                  "(immutable ref), not a branch or tag name.",
+                  file=sys.stderr,
+              )
+              print(f"::error::Invalid spec-commit value: {raw!r}", file=sys.stderr)
+              sys.exit(1)
+          c = c.lower()
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"sha={c}\n")
+          PY
+
+      - name: Checkout intentproof-spec
+        uses: actions/checkout@v6
+        with:
+          repository: IntentProof/intentproof-spec
+          ref: ${{ steps.spec_pin.outputs.sha }}
+          fetch-depth: 0
+          path: intentproof-spec
 
       - name: Set up Node.js for spec oracle
         uses: actions/setup-node@v6
