@@ -6,6 +6,10 @@ name: Conformance Attestation
 on:
   push:
     branches: [main, master]
+    # Do not re-run when cert-bot only refreshes repo-root conformance JSON (avoids push loops).
+    paths-ignore:
+      - "conformance-certificate.json"
+      - "conformance-report.json"
   workflow_dispatch:
 
 permissions:
@@ -27,10 +31,25 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Resolve pinned intentproof-spec revision
+        id: spec_pin
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import os
+          import tomllib
+          from pathlib import Path
+          c = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["tool"]["intentproof"]["spec-commit"]
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as f:
+              f.write(f"sha={c}\n")
+          PY
+
       - name: Checkout intentproof-spec
         uses: actions/checkout@v6
         with:
           repository: IntentProof/intentproof-spec
+          ref: ${{ steps.spec_pin.outputs.sha }}
+          fetch-depth: 0
           path: intentproof-spec
 
       - name: Set up Python
@@ -114,7 +133,9 @@ jobs:
           set -euo pipefail
           cp intentproof-spec/conformance-certificate.json conformance-certificate.json
           cp intentproof-spec/conformance-report.json conformance-report.json
-          if git diff --quiet -- conformance-certificate.json conformance-report.json; then
+          git add conformance-certificate.json conformance-report.json
+          # `git diff --quiet -- path` ignores untracked files; staged diff detects first-time adds.
+          if git diff --cached --quiet; then
             echo "No conformance artifact updates to commit."
             exit 0
           fi
@@ -122,6 +143,5 @@ jobs:
           git config user.email "intentproof-cert-bot[bot]@users.noreply.github.com"
           git config --local --unset-all http.https://github.com/.extraheader || true
           git remote set-url origin "https://x-access-token:${INTENTPROOF_CERT_BOT_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git add conformance-certificate.json conformance-report.json
           git commit -m "chore(ci): update conformance certificate and report"
           git push

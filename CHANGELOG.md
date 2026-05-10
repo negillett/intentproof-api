@@ -6,7 +6,7 @@ All notable changes to this repository are documented here. Releases follow SemV
 
 ## Unreleased
 
-- None yet.
+- **Conformance CI:** Align **`conformance-attestation.yml`** / **`spec-conformance.yml`** with SDK repos — checkout **`intentproof-spec`** at **`[tool.intentproof].spec-commit`**, **`paths-ignore`** on conformance JSON pushes (cert-bot loop guard), and fix cert-bot publish so **new** root **`conformance-certificate.json`** / **`conformance-report.json`** are committed (**`git diff --quiet` skipped untracked files**). README badge continues to target **`raw/main/conformance-certificate.json`** once **`intentproof-cert-bot`** lands the CI-generated files.
 
 ## 0.2.0 — 2026-05-09
 
