@@ -6,10 +6,14 @@ All notable changes to this repository are documented here. Releases follow SemV
 
 ## Unreleased
 
-- **Examples and developer docs:** runnable **`examples/`** (**`curl`** with **`curl -f`**, **`http_utils.require_http_base`** for **`INTENTPROOF_API_BASE`** (**http**/**https**, optional path prefix, no query/fragment or URL userinfo), URL-encoded correlation ids, validated **`limit`** (**1–500**); Python **`HttpExporter`** + stdlib **`urllib`** with **`URLError`** handling and non-zero exits on failure; optional **`INTENTPROOF_SDK_PYTHON_ROOT`**; security notes and **`tox -e static`** Ruff coverage for **`examples/`**). Top-level README points to **`examples/README.md`**.
-- **Public-repo hygiene:** remove **`docs/AWS_DEPLOYMENT.md`** / **`docs/DEPLOY.md`** — AWS/deploy narrative is maintainer/umbrella-only, not shipped in this repo.
-- **Transactional ingest and ops:** Alembic + Docker Compose + **`scripts/smoke.sh`**; optional **SQS** outbox (**`proof_ingest_outbox`**, **`app/verification_queue.py`**, **`scripts/publish_outbox.py`**), **`boto3`**; SQLite tests use **`create_all`** only on SQLite URLs.
-- **Spec pins and conformance:** **`[tool.intentproof]`**, **`app/generated/spec_fingerprint.json`**, **`scripts/check-spec-pin.sh`**; root **`conformance-report.json`** / **`conformance-certificate.json`**, README badge, cert-bot refresh on **`main`**.
+- None yet.
+
+## 0.2.0 — 2026-05-09
+
+- **Examples and integrator docs:** Add runnable **`examples/`** (`curl` and Python) with shared **`http_utils`** URL validation (**http**/**https**, optional path prefix, rejects query/fragment and URL userinfo); Ruff **`format`/`check`** includes **`examples/`** in **`tox -e static`**; trim README and point to **`examples/README.md`**.
+- **Deploy and optional queue:** Alembic migrations, **`Dockerfile`** + Compose, **`scripts/smoke.sh`**; optional transactional **SQS** outbox (**`proof_ingest_outbox`**, **`app/verification_queue.py`**, **`scripts/publish_outbox.py`**), **`boto3`** for publishers.
+- **Conformance and spec pins:** **`[tool.intentproof]`**, **`app/generated/spec_fingerprint.json`**, **`scripts/check-spec-pin.sh`**; conformance workflows and root **`conformance-report.json`** / **`conformance-certificate.json`** with README badge; consumer pin checker aligned with **`intentproof-spec`**.
+- **Public-repo boundaries:** Remove **`docs/AWS_DEPLOYMENT.md`** / **`docs/DEPLOY.md`** from this repository (AWS/deploy narrative lives in maintainer umbrella docs only).
 
 ## 0.1.0 — 2026-05-08
 
