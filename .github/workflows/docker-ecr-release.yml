@@ -68,8 +68,26 @@ jobs:
             -t "${image}" \
             .
 
+      - name: Job summary
+        if: success()
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.ref_name }}
+          REPO_NAME: intentproof-api
+        run: |
+          {
+            echo "### ECR image"
+            echo
+            echo "Pushed **\`${REGISTRY}/${REPO_NAME}:${TAG}\`** (platform **linux/amd64**)."
+            echo
+            echo "**Infra:** with **\`INTENTPROOF_INFRA_GH_WRITE_TOKEN\`**, the next step tries to set **\`TF_VAR_IMAGE_TAG=${TAG}\`** on **intentproof-infra**. That sync has **continue-on-error** so common GitHub/network issues cannot fail this job after a successful push."
+            echo
+            echo "Roll **ECS**: run **intentproof-infra** **Terraform** **apply** (manual) so the task definition picks up the new tag — see **intentproof-infra** **\`docs/DEPLOYMENT.md\`**."
+          } >> "${GITHUB_STEP_SUMMARY}"
+
       - name: Sync TF_VAR_IMAGE_TAG on intentproof-infra (optional)
         if: success()
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ secrets.INTENTPROOF_INFRA_GH_WRITE_TOKEN }}
           TAG: ${{ github.ref_name }}
@@ -83,19 +101,3 @@ jobs:
           repo="${INFRA_REPO:-IntentProof/intentproof-infra}"
           gh secret set TF_VAR_IMAGE_TAG --repo "${repo}" -b "${TAG}"
           echo "Updated TF_VAR_IMAGE_TAG on ${repo} to ${TAG} (repository secret)."
-
-      - name: Job summary
-        env:
-          REGISTRY: ${{ steps.ecr.outputs.registry }}
-          TAG: ${{ github.ref_name }}
-          REPO_NAME: intentproof-api
-        run: |
-          {
-            echo "### ECR image"
-            echo
-            echo "Pushed **\`${REGISTRY}/${REPO_NAME}:${TAG}\`** (platform **linux/amd64**)."
-            echo
-            echo "If **\`INTENTPROOF_INFRA_GH_WRITE_TOKEN\`** is set, **\`TF_VAR_IMAGE_TAG\`** was updated on **intentproof-infra** to **\`${TAG}\`** after the push."
-            echo
-            echo "Roll **ECS**: run **intentproof-infra** **Terraform** **apply** (manual) so the task definition picks up the new tag — see **intentproof-infra** **\`docs/DEPLOYMENT.md\`**."
-          } >> "${GITHUB_STEP_SUMMARY}"
