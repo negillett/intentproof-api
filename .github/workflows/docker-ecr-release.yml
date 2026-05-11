@@ -1,0 +1,81 @@
+# Build linux/amd64 image and push to AWS ECR on semver release tags (vX.Y.Z).
+# Requires repository secret AWS_ECR_PUSH_ROLE_ARN (OIDC role from intentproof-infra stack output).
+
+name: Release — Docker to ECR
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: intentproof-api-ecr-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY_NAME: intentproof-api
+
+jobs:
+  push:
+    name: Build and push
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4.3.0
+
+      - name: Require semver tag vX.Y.Z
+        run: |
+          set -euo pipefail
+          ref="${GITHUB_REF_NAME}"
+          if [[ ! "${ref}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::This workflow only publishes semver tags vMAJOR.MINOR.PATCH (no pre-release suffix). Got: ${ref}"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4.3.1
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ECR_PUSH_ROLE_ARN }}
+          mask-aws-account-id: true
+
+      - name: Login to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071aed4fc00d3559d3011cf04b # v2.2.0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@988b5a000041ab758af5e300aed1deb31243d0c2 # v3.10.0
+
+      - name: Build and push (linux/amd64)
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          image="${REGISTRY}/${ECR_REPOSITORY_NAME}:${TAG}"
+          docker buildx build \
+            --platform linux/amd64 \
+            --push \
+            -t "${image}" \
+            .
+
+      - name: Job summary
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          TAG: ${{ github.ref_name }}
+          REPO_NAME: intentproof-api
+        run: |
+          {
+            echo "### ECR image"
+            echo
+            echo "Pushed **\`${REGISTRY}/${REPO_NAME}:${TAG}\`** (platform **linux/amd64**)."
+            echo
+            echo "For **intentproof-infra** **stack** apply, set repository secret **\`TF_VAR_IMAGE_TAG\`** to **\`${TAG}\`** (matches ECS task definition tag)."
+          } >> "${GITHUB_STEP_SUMMARY}"
