@@ -1,7 +1,14 @@
 # Build linux/amd64 image and push to AWS ECR on semver release tags (vX.Y.Z).
 # Requires repository secret AWS_ECR_PUSH_ROLE_ARN (OIDC role from intentproof-infra stack output).
-# Optional: INTENTPROOF_INFRA_GH_WRITE_TOKEN — fine-grained PAT with Secrets write on
-# intentproof-infra; after a successful push, updates that repo's TF_VAR_IMAGE_TAG to this tag.
+#
+# Optional — sync TF_VAR_IMAGE_TAG on intentproof-infra after a successful push (continue-on-error):
+# Preferred: GitHub App (org-owned, repo-scoped installation on intentproof-infra only):
+#   Variables: INTENTPROOF_INFRA_GITHUB_APP_ID
+#   Secrets:    INTENTPROOF_INFRA_GITHUB_APP_PRIVATE_KEY (PEM)
+#   Optional vars: INTENTPROOF_INFRA_GITHUB_APP_OWNER (default IntentProof),
+#                   INTENTPROOF_INFRA_GITHUB_APP_REPOSITORY (repo short name, default intentproof-infra)
+# Fallback: fine-grained PAT INTENTPROOF_INFRA_GH_WRITE_TOKEN (Secrets write on intentproof-infra).
+# Optional: INTENTPROOF_INFRA_REPO — full owner/name for gh secret set (default IntentProof/intentproof-infra).
 
 name: Release — Docker to ECR
 
@@ -80,22 +87,42 @@ jobs:
             echo
             echo "Pushed **\`${REGISTRY}/${REPO_NAME}:${TAG}\`** (platform **linux/amd64**)."
             echo
-            echo "**Infra:** with **\`INTENTPROOF_INFRA_GH_WRITE_TOKEN\`**, the next step tries to set **\`TF_VAR_IMAGE_TAG=${TAG}\`** on **intentproof-infra**. That sync has **continue-on-error** so common GitHub/network issues cannot fail this job after a successful push."
+            echo "**Infra:** next step tries **GitHub App** (variables **\`INTENTPROOF_INFRA_GITHUB_APP_ID\`** + secret **\`INTENTPROOF_INFRA_GITHUB_APP_PRIVATE_KEY\`**) or legacy **\`INTENTPROOF_INFRA_GH_WRITE_TOKEN\`** PAT to set **\`TF_VAR_IMAGE_TAG=${TAG}\`** on **intentproof-infra**. Sync uses **continue-on-error** so credential or network issues cannot fail this job after a successful push."
             echo
             echo "Roll **ECS**: run **intentproof-infra** **Terraform** **apply** (manual) so the task definition picks up the new tag — see **intentproof-infra** **\`docs/DEPLOYMENT.md\`**."
           } >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Mint GitHub App token for intentproof-infra (optional)
+        id: infra-app-token
+        if: success() && vars.INTENTPROOF_INFRA_GITHUB_APP_ID != ''
+        continue-on-error: true
+        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v3.1.1
+        with:
+          app-id: ${{ vars.INTENTPROOF_INFRA_GITHUB_APP_ID }}
+          private-key: ${{ secrets.INTENTPROOF_INFRA_GITHUB_APP_PRIVATE_KEY }}
+          owner: ${{ vars.INTENTPROOF_INFRA_GITHUB_APP_OWNER || 'IntentProof' }}
+          repositories: ${{ vars.INTENTPROOF_INFRA_GITHUB_APP_REPOSITORY || 'intentproof-infra' }}
+          permission-metadata: read
+          permission-secrets: write
 
       - name: Sync TF_VAR_IMAGE_TAG on intentproof-infra (optional)
         if: success()
         continue-on-error: true
         env:
-          GH_TOKEN: ${{ secrets.INTENTPROOF_INFRA_GH_WRITE_TOKEN }}
+          GH_TOKEN_FROM_APP: ${{ steps.infra-app-token.outputs.token }}
+          GH_TOKEN_FROM_PAT: ${{ secrets.INTENTPROOF_INFRA_GH_WRITE_TOKEN }}
           TAG: ${{ github.ref_name }}
           INFRA_REPO: ${{ vars.INTENTPROOF_INFRA_REPO }}
         run: |
           set -euo pipefail
-          if [ -z "${GH_TOKEN}" ]; then
-            echo "Skipping intentproof-infra TF_VAR_IMAGE_TAG sync (INTENTPROOF_INFRA_GH_WRITE_TOKEN not set)."
+          if [ -n "${GH_TOKEN_FROM_APP}" ]; then
+            export GH_TOKEN="${GH_TOKEN_FROM_APP}"
+            echo "Using GitHub App installation token for intentproof-infra secret sync."
+          elif [ -n "${GH_TOKEN_FROM_PAT}" ]; then
+            export GH_TOKEN="${GH_TOKEN_FROM_PAT}"
+            echo "Using INTENTPROOF_INFRA_GH_WRITE_TOKEN for intentproof-infra secret sync."
+          else
+            echo "Skipping intentproof-infra TF_VAR_IMAGE_TAG sync (no INTENTPROOF_INFRA_GITHUB_APP_ID + private key, and no INTENTPROOF_INFRA_GH_WRITE_TOKEN)."
             exit 0
           fi
           repo="${INFRA_REPO:-IntentProof/intentproof-infra}"

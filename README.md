@@ -114,8 +114,10 @@ For production-style pushes to the **`intentproof-api`** ECR repository (same na
 2. **GitHub (`intentproof-api`):** repository secret **`AWS_ECR_PUSH_ROLE_ARN`** = that role ARN. No access keys are required.
 3. **Trigger:** push an annotated or lightweight tag **`vMAJOR.MINOR.PATCH`** (example **`v0.2.0`**). Workflow **`.github/workflows/docker-ecr-release.yml`** runs **`docker buildx build --platform linux/amd64 --push`**.
 4. **Deploy ECS:** run **intentproof-infra** **Terraform** **apply** (manual) so ECS uses the new image tag (see **`docs/DEPLOYMENT.md`** there).
-   - **Automate the tag secret:** add repository secret **`INTENTPROOF_INFRA_GH_WRITE_TOKEN`** — a **fine-grained PAT** with **Secrets → Read and write** on **`IntentProof/intentproof-infra`** only. After each successful ECR push, CI sets **`TF_VAR_IMAGE_TAG`** on that repo to the tag you just pushed (same string as ECR). Optional repository variable **`INTENTPROOF_INFRA_REPO`** overrides the default **`IntentProof/intentproof-infra`** (e.g. fork testing).
-   - Without that token, set **`TF_VAR_IMAGE_TAG`** on **`intentproof-infra`** manually to the semver tag, then apply.
+   - **Automate the tag secret (preferred):** org-owned **GitHub App** installed on **`IntentProof/intentproof-infra`** only — repository permission **Secrets → Read and write** plus **Metadata → Read**. On **`intentproof-api`**, set Actions variable **`INTENTPROOF_INFRA_GITHUB_APP_ID`** (numeric App ID from the app settings) and secret **`INTENTPROOF_INFRA_GITHUB_APP_PRIVATE_KEY`** (full PEM). Optional variables: **`INTENTPROOF_INFRA_GITHUB_APP_OWNER`** (defaults to **`IntentProof`**), **`INTENTPROOF_INFRA_GITHUB_APP_REPOSITORY`** (short repo name; defaults **`intentproof-infra`**).
+   - **Fallback:** repository secret **`INTENTPROOF_INFRA_GH_WRITE_TOKEN`** — fine-grained PAT with **Secrets → Read and write** on **`IntentProof/intentproof-infra`** only.
+   - Optional repository variable **`INTENTPROOF_INFRA_REPO`** overrides **`IntentProof/intentproof-infra`** for **`gh secret set`** (fork testing).
+   - Without App ID + key or PAT, set **`TF_VAR_IMAGE_TAG`** on **`intentproof-infra`** manually after each release tag, then apply.
 
 **`AWS_REGION`** in the workflow defaults to **`us-east-1`**; change it if your ECR region differs.
 
