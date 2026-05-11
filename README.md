@@ -1,6 +1,7 @@
 ## **Logs narrate; IntentProof gives you proof.**
 
 [![CI](https://github.com/IntentProof/intentproof-api/actions/workflows/ci.yml/badge.svg)](https://github.com/IntentProof/intentproof-api/actions/workflows/ci.yml)
+[![Release — Docker to ECR](https://github.com/IntentProof/intentproof-api/actions/workflows/docker-ecr-release.yml/badge.svg)](https://github.com/IntentProof/intentproof-api/actions/workflows/docker-ecr-release.yml)
 <a href="https://github.com/IntentProof/intentproof-api/raw/main/conformance-certificate.json" target="_blank" rel="noopener noreferrer"><img src="https://img.shields.io/badge/conformance_certificate-view-0366d6" alt="Conformance Certificate" /></a>
 
 **IntentProof** is **auditable execution records** for actions that must be defensible—**intent** tied to what actually ran.
@@ -104,6 +105,17 @@ Quick status map:
 4. Open docs: `http://127.0.0.1:8000/docs`
 
 Migrations run automatically via the container entrypoint (**`alembic upgrade head`**).
+
+### Release images (AWS ECR)
+
+For production-style pushes to the **`intentproof-api`** ECR repository (same name as in **`intentproof-infra`** **`stack`**):
+
+1. **AWS (via Terraform):** **`intentproof-infra`** **`stack`** creates an OIDC-trusted IAM role (output **`github_actions_api_ecr_push_role_arn`**) that allows **only** **`IntentProof/intentproof-api`** pushes on tags **`refs/tags/v*`** (semver **`vX.Y.Z`** in CI). See **`intentproof-infra`** **`docs/DEPLOYMENT.md`**.
+2. **GitHub (`intentproof-api`):** repository secret **`AWS_ECR_PUSH_ROLE_ARN`** = that role ARN. No access keys are required.
+3. **Trigger:** push an annotated or lightweight tag **`vMAJOR.MINOR.PATCH`** (example **`v0.2.0`**). Workflow **`.github/workflows/docker-ecr-release.yml`** runs **`docker buildx build --platform linux/amd64 --push`**.
+4. **Deploy ECS:** in **`intentproof-infra`**, set **`TF_VAR_IMAGE_TAG`** to the same tag and run the **Terraform** **apply** workflow (see that repo’s **`docs/DEPLOYMENT.md`**).
+
+**`AWS_REGION`** in the workflow defaults to **`us-east-1`**; change it if your ECR region differs.
 
 ### Option B — Local Python (SQLite tests use auto-`create_all`; Postgres needs Alembic)
 
