@@ -113,7 +113,9 @@ For production-style pushes to the **`intentproof-api`** ECR repository (same na
 1. **AWS (via Terraform):** **`intentproof-infra`** **`stack`** creates an OIDC-trusted IAM role (output **`github_actions_api_ecr_push_role_arn`**) that allows **only** **`IntentProof/intentproof-api`** pushes on tags **`refs/tags/v*`** (semver **`vX.Y.Z`** in CI). See **`intentproof-infra`** **`docs/DEPLOYMENT.md`**.
 2. **GitHub (`intentproof-api`):** repository secret **`AWS_ECR_PUSH_ROLE_ARN`** = that role ARN. No access keys are required.
 3. **Trigger:** push an annotated or lightweight tag **`vMAJOR.MINOR.PATCH`** (example **`v0.2.0`**). Workflow **`.github/workflows/docker-ecr-release.yml`** runs **`docker buildx build --platform linux/amd64 --push`**.
-4. **Deploy ECS:** in **`intentproof-infra`**, set **`TF_VAR_IMAGE_TAG`** to the same tag and run the **Terraform** **apply** workflow (see that repo’s **`docs/DEPLOYMENT.md`**).
+4. **Deploy ECS:** run **intentproof-infra** **Terraform** **apply** (manual) so ECS uses the new image tag (see **`docs/DEPLOYMENT.md`** there).
+   - **Automate the tag secret:** add repository secret **`INTENTPROOF_INFRA_GH_WRITE_TOKEN`** — a **fine-grained PAT** with **Secrets → Read and write** on **`IntentProof/intentproof-infra`** only. After each successful ECR push, CI sets **`TF_VAR_IMAGE_TAG`** on that repo to the tag you just pushed (same string as ECR). Optional repository variable **`INTENTPROOF_INFRA_REPO`** overrides the default **`IntentProof/intentproof-infra`** (e.g. fork testing).
+   - Without that token, set **`TF_VAR_IMAGE_TAG`** on **`intentproof-infra`** manually to the semver tag, then apply.
 
 **`AWS_REGION`** in the workflow defaults to **`us-east-1`**; change it if your ECR region differs.
 

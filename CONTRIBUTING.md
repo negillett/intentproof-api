@@ -35,4 +35,6 @@ Custody and rotation are documented in [`intentproof-spec` CONTRIBUTING](https:/
 
 Pushing container images is **not** part of the default PR CI. After **`intentproof-infra`** **`stack`** creates the ECR push IAM role, add repository secret **`AWS_ECR_PUSH_ROLE_ARN`** (role ARN from Terraform output **`github_actions_api_ecr_push_role_arn`**). Pushing a semver tag **`vX.Y.Z`** runs **`.github/workflows/docker-ecr-release.yml`** (see root **`README.md`** and **`intentproof-infra`** **`docs/DEPLOYMENT.md`**).
 
+Optional: **`INTENTPROOF_INFRA_GH_WRITE_TOKEN`** — fine-grained PAT with **Secrets** read/write on **`intentproof-infra`** only — so the ECR workflow can set **`TF_VAR_IMAGE_TAG`** there after a successful push (keeps the infra secret aligned with the image that landed in ECR). **`INTENTPROOF_INFRA_REPO`** (variable) overrides the default **`IntentProof/intentproof-infra`** if needed.
+
 For undisclosed security issues, use [Security advisories](https://github.com/IntentProof/intentproof-api/security/advisories).

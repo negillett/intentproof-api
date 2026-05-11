@@ -1,5 +1,7 @@
 # Build linux/amd64 image and push to AWS ECR on semver release tags (vX.Y.Z).
 # Requires repository secret AWS_ECR_PUSH_ROLE_ARN (OIDC role from intentproof-infra stack output).
+# Optional: INTENTPROOF_INFRA_GH_WRITE_TOKEN — fine-grained PAT with Secrets write on
+# intentproof-infra; after a successful push, updates that repo's TF_VAR_IMAGE_TAG to this tag.
 
 name: Release — Docker to ECR
 
@@ -66,6 +68,22 @@ jobs:
             -t "${image}" \
             .
 
+      - name: Sync TF_VAR_IMAGE_TAG on intentproof-infra (optional)
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.INTENTPROOF_INFRA_GH_WRITE_TOKEN }}
+          TAG: ${{ github.ref_name }}
+          INFRA_REPO: ${{ vars.INTENTPROOF_INFRA_REPO }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "Skipping intentproof-infra TF_VAR_IMAGE_TAG sync (INTENTPROOF_INFRA_GH_WRITE_TOKEN not set)."
+            exit 0
+          fi
+          repo="${INFRA_REPO:-IntentProof/intentproof-infra}"
+          printf '%s' "${TAG}" | gh secret set TF_VAR_IMAGE_TAG --repo "${repo}" --stdin
+          echo "Updated TF_VAR_IMAGE_TAG on ${repo} to ${TAG} (repository secret)."
+
       - name: Job summary
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
@@ -77,5 +95,7 @@ jobs:
             echo
             echo "Pushed **\`${REGISTRY}/${REPO_NAME}:${TAG}\`** (platform **linux/amd64**)."
             echo
-            echo "For **intentproof-infra** **stack** apply, set repository secret **\`TF_VAR_IMAGE_TAG\`** to **\`${TAG}\`** (matches ECS task definition tag)."
+            echo "If **\`INTENTPROOF_INFRA_GH_WRITE_TOKEN\`** is set, **\`TF_VAR_IMAGE_TAG\`** was updated on **intentproof-infra** to **\`${TAG}\`** after the push."
+            echo
+            echo "Roll **ECS**: run **intentproof-infra** **Terraform** **apply** (manual) so the task definition picks up the new tag — see **intentproof-infra** **\`docs/DEPLOYMENT.md\`**."
           } >> "${GITHUB_STEP_SUMMARY}"
