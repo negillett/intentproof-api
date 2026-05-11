@@ -81,7 +81,7 @@ jobs:
             exit 0
           fi
           repo="${INFRA_REPO:-IntentProof/intentproof-infra}"
-          printf '%s' "${TAG}" | gh secret set TF_VAR_IMAGE_TAG --repo "${repo}" --stdin
+          gh secret set TF_VAR_IMAGE_TAG --repo "${repo}" -b "${TAG}"
           echo "Updated TF_VAR_IMAGE_TAG on ${repo} to ${TAG} (repository secret)."
 
       - name: Job summary
