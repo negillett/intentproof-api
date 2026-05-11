@@ -233,6 +233,7 @@ def test_openapi_contract_includes_core_endpoints_and_schemas(client):
     assert "/v1/events" in paths
     assert "/v1/events/by-correlation/{correlation_id}" in paths
     assert "IngestEventResponse" in components
+    assert "outbox_publish_ok" in components["IngestEventResponse"].get("properties", {})
     assert "CorrelationQueryResponse" in components
     assert "IntentProofExecutionEventV1" in components
 
@@ -267,6 +268,7 @@ def test_ingest_enqueues_sqs_when_queue_url_set(mock_boto, monkeypatch, tmp_path
     assert parsed["type"] == "intentproof.proof.ingested"
     assert "message_id" in parsed
     assert parsed["execution_event_row_id"] >= 1
+    assert r.json().get("outbox_publish_ok") is True
 
 
 @patch("boto3.client")
@@ -315,6 +317,7 @@ def test_ingest_still_accepted_when_sqs_send_fails(mock_boto, monkeypatch, tmp_p
             headers=headers,
         )
     assert r.status_code == 202
+    assert r.json().get("outbox_publish_ok") is False
 
     db = sessionmaker(bind=get_engine(), autoflush=False, autocommit=False)()
     try:

@@ -23,6 +23,8 @@ class IngestEventResponse(BaseModel):
     event_id: str
     correlation_id: str | None
     ingested_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    # Outbox (SQS): True/False after publish when enabled; omitted or null otherwise.
+    outbox_publish_ok: bool | None = None
 
 
 class StoredEventOut(BaseModel):

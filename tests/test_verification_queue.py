@@ -1,4 +1,5 @@
 import json
+import os
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -15,7 +16,10 @@ from app.verification_queue import (
 
 
 @pytest.fixture(autouse=True)
-def _reset_settings():
+def _reset_settings(monkeypatch, tmp_path_factory):
+    if "INTENTPROOF_DATABASE_URL" not in os.environ:
+        p = tmp_path_factory.mktemp("verification_queue_db") / "default.db"
+        monkeypatch.setenv("INTENTPROOF_DATABASE_URL", f"sqlite+pysqlite:///{p}")
     reset_settings_cache()
     yield
     reset_settings_cache()

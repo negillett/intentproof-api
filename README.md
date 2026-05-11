@@ -134,7 +134,7 @@ Requires **`curl`** and **`jq`**.
 
 ## Configuration
 
-- `INTENTPROOF_DATABASE_URL`: SQLAlchemy URL (defaults to local Postgres)
+- `INTENTPROOF_DATABASE_URL`: SQLAlchemy URL (**required** — set explicitly; use SQLite for local tests, Postgres in Docker via Compose, or RDS in production)
 - `INTENTPROOF_API_KEYS`: JSON object mapping API key to tenant id (production deployments should use **hashed keys stored in Postgres**, not environment JSON)
 - `INTENTPROOF_ENV`: environment name (`dev`, `staging`, `prod`, etc.)
 - `INTENTPROOF_SQS_QUEUE_URL` (optional): Amazon SQS queue URL — after a successful append (non-duplicate), enqueue **`intentproof.proof.ingested`** for verification workers

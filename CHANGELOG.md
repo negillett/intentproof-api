@@ -6,6 +6,8 @@ All notable changes to this repository are documented here. Releases follow SemV
 
 ## Unreleased
 
+- **Security / contract:** API key lookup uses **`secrets.compare_digest`** over same-length keys with sorted iteration (no dict short-circuit); **`INTENTPROOF_DATABASE_URL`** is required (**no embedded default credentials**).
+- **`POST /v1/events`:** Response includes **`outbox_publish_ok`** when the transactional outbox path runs (**`null`**/`omitted` when SQS/outbox disabled, **`false`** when publish failed after ingest commit).
 - **Conformance CI:** Align **`conformance-attestation.yml`** / **`spec-conformance.yml`** with SDK repos — checkout **`intentproof-spec`** at **`[tool.intentproof].spec-commit`**, **`paths-ignore`** on conformance JSON pushes (cert-bot loop guard), and fix cert-bot publish so **new** root **`conformance-certificate.json`** / **`conformance-report.json`** are committed (**`git diff --quiet` skipped untracked files**). README badge continues to target **`raw/main/conformance-certificate.json`** once **`intentproof-cert-bot`** lands the CI-generated files.
 
 ## 0.2.0 — 2026-05-09

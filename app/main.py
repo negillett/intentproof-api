@@ -86,6 +86,7 @@ def ingest_event(
             event_id=event.id,
             correlation_id=event.correlation_id,
             ingested_at=datetime.now(UTC),
+            outbox_publish_ok=None,
         )
 
     record = ExecutionEventRecord(
@@ -120,8 +121,9 @@ def ingest_event(
     db.commit()
     db.refresh(record)
 
+    outbox_publish_ok: bool | None = None
     if outbox_id is not None:
-        publish_outbox_row(db, outbox_id)
+        outbox_publish_ok = publish_outbox_row(db, outbox_id)
 
     return IngestEventResponse(
         accepted=True,
@@ -130,6 +132,7 @@ def ingest_event(
         event_id=event.id,
         correlation_id=event.correlation_id,
         ingested_at=datetime.now(UTC),
+        outbox_publish_ok=outbox_publish_ok,
     )
 
 
